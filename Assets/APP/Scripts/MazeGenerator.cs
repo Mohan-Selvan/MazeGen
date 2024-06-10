@@ -8,18 +8,41 @@ namespace com.BlackSpear.MazeGen
     public class MazeGenerator : MonoBehaviour
     {
         [Header("Settings")]
+        [SerializeField] int randomSeed = 2;
         [SerializeField] Vector2Int gridSize = Vector2Int.one;
         [SerializeField] float cellSize = 1f;
 
         [Header("Debug Draw")]
-        [SerializeField] bool enableDebugDraw = false;
+        [SerializeField] bool enableDebugDraw = true;
+        [SerializeField] bool enableVisitationDraw = true;
+
+        [Header("Settings")]
+        [SerializeField] KeyCode generateKeyCode = KeyCode.Space;
+        [SerializeField] float waitDuration = 0.1f;
 
         //private 
         private Cell[,] _cells;
         private Coroutine _routine = null;
-    
+        private bool[,] _visitations = null;
+        [SerializeField] private Cell _currentCell = null;
+        private System.Random random = null;
+
 
         private void Start()
+        {
+            InitializeGrid();
+        }
+
+        private void Update()
+        {
+            if(Input.GetKeyDown(generateKeyCode))
+            {
+                InitializeGrid();
+                GenerateMaze();
+            }
+        }
+
+        private void InitializeGrid()
         {
             _cells = new Cell[gridSize.x, gridSize.y];
 
@@ -29,7 +52,7 @@ namespace com.BlackSpear.MazeGen
                 for (int j = 0; j < gridSize.y; j++)
                 {
                     Cell cell = new Cell();
-                    Vector2 cellPosition = basePosition + (cellSize * i * Vector2.right) + (cellSize * j * Vector2.down);
+                    Vector2 cellPosition = basePosition + (cellSize * i * Vector2.right) + (cellSize * j * Vector2.up);
 
                     cell.Initialize(new Vector2Int(i, j), cellPosition);
                     _cells[i, j] = cell;
@@ -52,39 +75,39 @@ namespace com.BlackSpear.MazeGen
         {
             Debug.Log("GenerateMaze_Routine : Start");
 
-            WaitForSeconds wait = new WaitForSeconds(0.1f);
+            random = new System.Random(Seed: randomSeed);
+            WaitForSeconds wait = new WaitForSeconds(waitDuration);
 
-            bool[,] visitations = new bool[_cells.GetLength(0), _cells.GetLength(1)];
-            for (int i = 0; i < visitations.GetLength(0); i++)
+            _visitations = new bool[_cells.GetLength(0), _cells.GetLength(1)];
+            for (int i = 0; i < _visitations.GetLength(0); i++)
             {
-                for (int j = 0; j < visitations.GetLength(1); j++)
+                for (int j = 0; j < _visitations.GetLength(1); j++)
                 {
-                    visitations[i, j] = false;
+                    _visitations[i, j] = false;
                 }
             }
 
             Stack<Cell> stack = new Stack<Cell>();
 
 
-            Cell currentCell = _cells[0, 0];
-            visitations[currentCell.GridPosition.x, currentCell.GridPosition.y] = true;
-            stack.Push(currentCell);
+            _currentCell = _cells[0, 0];
+            _visitations[_currentCell.GridPosition.x, _currentCell.GridPosition.y] = true;
+            stack.Push(_currentCell);
 
             while (stack.Count > 0)
             {
-                currentCell = stack.Pop();
+                _currentCell = stack.Pop();
 
-                List<Cell> unvisitedNeighborCells = GetUnvisitedNeighborCells(currentCell);
+                List<Cell> unvisitedNeighborCells = GetUnvisitedNeighborCells(_currentCell);
                 if(unvisitedNeighborCells.Count > 0)
                 {
-                    stack.Push(currentCell);
+                    stack.Push(_currentCell);
 
-                    // TODO :: Random sample
-                    Cell nextCell = unvisitedNeighborCells[0];
-                    RemoveWallBetweenCells(currentCell, nextCell);
-                    visitations[nextCell.GridPosition.x, nextCell.GridPosition.y] = true;
+                    Cell nextCell = unvisitedNeighborCells[random.Next(0, unvisitedNeighborCells.Count)];
+                    RemoveWallBetweenCells(_currentCell, nextCell);
+                    _visitations[nextCell.GridPosition.x, nextCell.GridPosition.y] = true;
                     stack.Push(nextCell);
-                    currentCell = nextCell;
+                    _currentCell = nextCell;
                 }
 
                 yield return wait;
@@ -92,12 +115,14 @@ namespace com.BlackSpear.MazeGen
             }
 
             Debug.Log("GenerateMaze_Routine : Stop");
+            _routine = null;
+        }
 
-            List<Cell> GetUnvisitedNeighborCells(Cell cell)
-            {
-                List<Cell> unvisitedNeighbors = new List<Cell>();
+        List<Cell> GetUnvisitedNeighborCells(Cell cell)
+        {
+            List<Cell> unvisitedNeighbors = new List<Cell>();
 
-                List<Vector2Int> allNeighborCoords = new List<Vector2Int>()
+            List<Vector2Int> allNeighborCoords = new List<Vector2Int>()
                 {
                     new Vector2Int(cell.GridPosition.x + 0, cell.GridPosition.y + 1),
                     new Vector2Int(cell.GridPosition.x + 1, cell.GridPosition.y + 0),
@@ -105,16 +130,15 @@ namespace com.BlackSpear.MazeGen
                     new Vector2Int(cell.GridPosition.x - 1, cell.GridPosition.y + 0),
                 };
 
-                foreach (Vector2Int coord in allNeighborCoords)
+            foreach (Vector2Int coord in allNeighborCoords)
+            {
+                if (IsCoordinateInsideGrid(coord) && (!_visitations[coord.x, coord.y]))
                 {
-                    if (IsCoordinateInsideGrid(coord) && (!visitations[coord.x, coord.y]))
-                    {
-                        unvisitedNeighbors.Add(_cells[coord.x, coord.y]);
-                    }
+                    unvisitedNeighbors.Add(_cells[coord.x, coord.y]);
                 }
-
-                return unvisitedNeighbors;
             }
+
+            return unvisitedNeighbors;
         }
 
         private void RemoveWallBetweenCells(Cell currentCell, Cell nextCell)
@@ -146,6 +170,7 @@ namespace com.BlackSpear.MazeGen
         {
             return coord.x >= 0 && coord.x < gridSize.x && coord.y >= 0 && coord.y < gridSize.y;
         }
+
         #region Gizmos
 
         private void OnDrawGizmos()
@@ -154,15 +179,37 @@ namespace com.BlackSpear.MazeGen
             
             if(_cells == null) { return; }
 
-            Vector2 basePosition = transform.position;
-
             for (int i = 0; i < _cells.GetLength(0);  i++)
             {
                 for (int j = 0; j < _cells.GetLength(1); j++)
                 {
                     Cell cell = _cells[i, j];
-                    cell.Draw(cell.WorldPosition, cellSize);
+                    cell.Draw(cellSize);
                 }
+            }
+
+            if(enableVisitationDraw && _visitations != null)
+            {
+                Gizmos.color = Color.yellow;
+
+                for (int i = 0; i < _cells.GetLength(0); i++)
+                {
+                    for (int j = 0; j < _cells.GetLength(1); j++)
+                    {
+                        Cell cell = _cells[i, j];
+                        
+                        if (_visitations[i, j])
+                        {
+                            Gizmos.DrawCube(cell.WorldPosition + new Vector2(0.5f * cellSize, 0.5f * cellSize), Vector2.one * 0.8f * cellSize);
+                        }
+                    }
+                }
+            }
+
+            if(_currentCell != null)
+            {
+                Gizmos.color = Color.blue;
+                Gizmos.DrawCube(_currentCell.WorldPosition + new Vector2(0.5f * cellSize, 0.5f * cellSize), Vector2.one * 0.75f * cellSize);
             }
         }
 

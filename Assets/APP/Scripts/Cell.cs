@@ -8,6 +8,8 @@ namespace com.BlackSpear.MazeGen
 
     public class Cell
     {
+        private const int SIDES = 4;
+
         public Vector2Int GridPosition = default;
         public Vector2 WorldPosition = default;
 
@@ -66,25 +68,25 @@ namespace com.BlackSpear.MazeGen
             }
         }
 
-        internal void Draw(Vector2 position, float cellSize)
+        internal void Draw(float cellSize)
         {
             Gizmos.color = Color.white;
 
             if(GetWall(Wall.TOP))
             {
-                Gizmos.DrawLine(position, position + (Vector2.right * cellSize));
+                Gizmos.DrawLine(WorldPosition + (Vector2.up * cellSize), WorldPosition + (Vector2.up * cellSize) + (Vector2.right * cellSize));
             }
             if (GetWall(Wall.RIGHT))
             {
-                Gizmos.DrawLine(position + Vector2.right * cellSize, position + (Vector2.right * cellSize) + (Vector2.down * cellSize));
+                Gizmos.DrawLine(WorldPosition + (Vector2.right * cellSize), WorldPosition + (Vector2.right * cellSize) + (Vector2.up * cellSize));
             }
             if (GetWall(Wall.BOTTOM))
             {
-                Gizmos.DrawLine(position + (Vector2.right * cellSize) + (Vector2.down * cellSize), position + Vector2.down* cellSize);
+                Gizmos.DrawLine(WorldPosition, WorldPosition + (Vector2.right* cellSize));
             }
             if (GetWall(Wall.LEFT))
             {
-                Gizmos.DrawLine(position, position + (Vector2.down * cellSize));
+                Gizmos.DrawLine(WorldPosition, WorldPosition + (Vector2.up * cellSize));
             }
         }
     }
