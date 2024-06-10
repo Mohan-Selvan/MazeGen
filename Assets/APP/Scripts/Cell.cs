@@ -8,14 +8,15 @@ namespace com.BlackSpear.MazeGen
 
     public class Cell
     {
-        public const int SIDES = 4;
-        public Vector2 Position = default;
+        public Vector2Int GridPosition = default;
+        public Vector2 WorldPosition = default;
 
         [SerializeField] List<bool> walls = null;
 
-        internal void Initialize(Vector2 position)
+        internal void Initialize(Vector2Int gridPosition, Vector2 worldPosition)
         {
-            this.Position = position;
+            this.GridPosition = gridPosition;
+            this.WorldPosition = worldPosition;
 
             walls = new List<bool>();
 
@@ -43,6 +44,28 @@ namespace com.BlackSpear.MazeGen
             }
         }
 
+        internal void SetWall(Wall wall, bool value)
+        {
+            switch (wall)
+            {
+                case Wall.TOP:
+                    walls[0] = value;
+                    break;
+                case Wall.RIGHT:
+                    walls[1] = value;
+                    break;
+                case Wall.BOTTOM:
+                    walls[2] = value;
+                    break;
+                case Wall.LEFT:
+                    walls[3] = value;
+                    break;
+                default:
+                    Debug.LogError($"Invalid wall : {wall}");
+                    break;
+            }
+        }
+
         internal void Draw(Vector2 position, float cellSize)
         {
             Gizmos.color = Color.white;
@@ -53,11 +76,11 @@ namespace com.BlackSpear.MazeGen
             }
             if (GetWall(Wall.RIGHT))
             {
-                Gizmos.DrawLine(position + Vector2.right * cellSize, position + (Vector2.down * cellSize));
+                Gizmos.DrawLine(position + Vector2.right * cellSize, position + (Vector2.right * cellSize) + (Vector2.down * cellSize));
             }
             if (GetWall(Wall.BOTTOM))
             {
-                Gizmos.DrawLine(position + (Vector2.down * cellSize), position + Vector2.down* cellSize);
+                Gizmos.DrawLine(position + (Vector2.right * cellSize) + (Vector2.down * cellSize), position + Vector2.down* cellSize);
             }
             if (GetWall(Wall.LEFT))
             {
